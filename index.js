@@ -6,8 +6,10 @@ const {
   EmbedBuilder
 } = require("discord.js");
 
-// TOKENINI BURAYA YAZ
-const TOKEN = "MTU2MzQ4ODU5NTI3NTQxNTU4Mg.GEkrJm.eSrI1dy9FXU22oMAg4YVgQGo7bR-3985XDnmUs";
+const http = require("node:http");
+
+// BOT TOKENINI BURAYA YAZ
+const TOKEN = "MTU2MzQ4ODU5NTI3NTQxNTU4Mg.G6Q2QY.Da8geGBHH1Ix92AQeBo888Kt0bOnmKwruxngb8";
 
 const PREFIX = "!";
 
@@ -20,252 +22,169 @@ const client = new Client({
   ]
 });
 
-function parseDuration(value) {
-  const match = value?.match(/^(\d+)(s|m|h|d)$/i);
-  if (!match) return null;
+// Render icin HTTP sunucusu
+const PORT = process.env.PORT || 3000;
 
-  const amount = Number(match[1]);
-  const unit = match[2].toLowerCase();
-
-  const multiplier = {
-    s: 1000,
-    m: 60000,
-    h: 3600000,
-    d: 86400000
-  }[unit];
-
-  const duration = amount * multiplier;
-
-  if (!Number.isSafeInteger(duration) || duration <= 0) return null;
-  if (duration > 28 * 24 * 60 * 60 * 1000) return null;
-
-  return duration;
-}
-
-function makeEmbed(title, description, color = 0xE53935) {
-  return new EmbedBuilder()
-    .setColor(color)
-    .setTitle(title)
-    .setDescription(description)
-    .setTimestamp();
-}
-
-client.once("ready", () => {
-  console.log("--------------------------------");
-  console.log(`BOT AKTIF: ${client.user.tag}`);
-  console.log(`Bot ID: ${client.user.id}`);
-  console.log("--------------------------------");
-
-  client.user.setActivity("!yardım | Moderasyon");
+http.createServer((req, res) => {
+  res.writeHead(200, {
+    "Content-Type": "text/plain; charset=utf-8"
+  });
+  res.end("Moderasyon botu aktif!");
+}).listen(PORT, "0.0.0.0", () => {
+  console.log(`HTTP sunucusu ${PORT} portunda acildi.`);
 });
 
-client.on("messageCreate", async message => {
+client.once("ready", () => {
+  console.log(`BOT AKTIF: ${client.user.tag}`);
+  client.user.setActivity("!yardim | Moderasyon");
+});
+
+client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
   if (!message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
-  const command = args.shift()?.toLocaleLowerCase("tr-TR");
-
-  if (!command) return;
-
-  const member = message.member;
-  const me = message.guild.members.me;
+  const command = args.shift()?.toLowerCase();
 
   try {
-    // Herkesin kullanabilecegi komutlar
     if (command === "ping") {
-      return message.reply(`🏓 Pong! Gecikme: ${client.ws.ping} ms`);
+      return message.reply(`Pong! ${client.ws.ping}ms`);
     }
 
-    if (command === "yardım" || command === "yardim") {
-      const embed = makeEmbed(
-        "🛡️ Moderasyon Botu | Komutlar",
-        [
-          "**Genel**",
-          "`!ping` — Bot gecikmesini gösterir.",
-          "`!yardım` — Komut listesini gösterir.",
-          "",
-          "**Moderasyon**",
-          "`!at @üye [sebep]` — Üyeyi sunucudan atar.",
-          "`!yasakla @üye [sebep]` — Üyeyi yasaklar.",
-          "`!yasakkaldır ID` — Kullanıcının yasağını kaldırır.",
-          "`!temizle 10` — En fazla 100 mesaj siler.",
-          "`!sustur @üye 10m [sebep]` — Üyeyi süreli susturur.",
-          "`!susturmakaldır @üye` — Susturmayı kaldırır.",
-          "",
-          "Süre biçimleri: `30s`, `10m`, `2h`, `1d`",
-          "Moderasyon komutları ilgili Discord yetkisini gerektirir."
-        ].join("\n")
-      );
+    if (["yardim", "yardım"].includes(command)) {
+      const embed = new EmbedBuilder()
+        .setColor(0xC0392B)
+        .setTitle("Moderasyon Botu")
+        .setDescription([
+          "`!ping` - Bot gecikmesi",
+          "`!at @uye [sebep]` - Sunucudan at",
+          "`!yasakla @uye [sebep]` - Yasakla",
+          "`!yasakkaldir ID` - Yasağı kaldır",
+          "`!temizle 10` - Mesajları temizle",
+          "`!sustur @uye 10m [sebep]` - Sustur",
+          "`!susturmakaldir @uye` - Susturmayı kaldır"
+        ].join("\n"));
 
       return message.reply({ embeds: [embed] });
     }
 
-    // Moderasyon komutlari icin yetki kontrolu
-    const permissionMap = {
-      at: PermissionFlagsBits.KickMembers,
-      yasakla: PermissionFlagsBits.BanMembers,
-      yasakkaldır: PermissionFlagsBits.BanMembers,
-      yasakkaldir: PermissionFlagsBits.BanMembers,
-      temizle: PermissionFlagsBits.ManageMessages,
-      sustur: PermissionFlagsBits.ModerateMembers,
-      susturmakaldır: PermissionFlagsBits.ModerateMembers,
-      susturmakaldir: PermissionFlagsBits.ModerateMembers
-    };
-
-    const requiredPermission = permissionMap[command];
-    if (!requiredPermission) return;
-
-    if (!member.permissions.has(requiredPermission)) {
-      return message.reply("❌ Bu komutu kullanmak için yetkin yok.");
+    if (!message.member.permissions.has(PermissionFlagsBits.ModerateMembers) &&
+        !message.member.permissions.has(PermissionFlagsBits.KickMembers) &&
+        !message.member.permissions.has(PermissionFlagsBits.BanMembers) &&
+        !message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+      return message.reply("Bu komutları kullanmak için moderasyon yetkin olmalı.");
     }
 
-    const target = message.mentions.members.first();
-    const reason = args.slice(1).join(" ") || "Sebep belirtilmedi.";
+    if (command === "at") {
+      if (!message.member.permissions.has(PermissionFlagsBits.KickMembers)) {
+        return message.reply("Üyeleri atma yetkin yok.");
+      }
 
-    // Mesaj temizleme
+      const member = message.mentions.members.first();
+      if (!member) return message.reply("Kullanım: `!at @uye [sebep]`");
+      if (!member.kickable) return message.reply("Bu üyeyi atamıyorum.");
+
+      const reason = args.slice(1).join(" ") || "Sebep belirtilmedi";
+      await member.kick(reason);
+      return message.reply(`${member.user.tag} sunucudan atıldı. Sebep: ${reason}`);
+    }
+
+    if (command === "yasakla") {
+      if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) {
+        return message.reply("Üyeleri yasaklama yetkin yok.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) return message.reply("Kullanım: `!yasakla @uye [sebep]`");
+      if (!member.bannable) return message.reply("Bu üyeyi yasaklayamıyorum.");
+
+      const reason = args.slice(1).join(" ") || "Sebep belirtilmedi";
+      await member.ban({ reason });
+      return message.reply(`${member.user.tag} yasaklandı. Sebep: ${reason}`);
+    }
+
+    if (["yasakkaldir", "yasakkaldır"].includes(command)) {
+      if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) {
+        return message.reply("Yasak kaldırma yetkin yok.");
+      }
+
+      const userId = args[0];
+      if (!userId) return message.reply("Kullanım: `!yasakkaldir KULLANICI_ID`");
+
+      await message.guild.members.unban(userId);
+      return message.reply(`${userId} kullanıcısının yasağı kaldırıldı.`);
+    }
+
     if (command === "temizle") {
-      const amount = Number(args[0]);
+      if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+        return message.reply("Mesajları yönetme yetkin yok.");
+      }
 
+      const amount = Number(args[0]);
       if (!Number.isInteger(amount) || amount < 1 || amount > 100) {
         return message.reply("Kullanım: `!temizle 1-100`");
       }
 
-      if (!me.permissions.has(PermissionFlagsBits.ManageMessages)) {
-        return message.reply("❌ Botta Mesajları Yönet yetkisi yok.");
-      }
-
       const deleted = await message.channel.bulkDelete(amount, true);
-      const reply = await message.channel.send(
-        `🧹 ${deleted.size} mesaj silindi.`
-      );
-
-      setTimeout(() => reply.delete().catch(() => {}), 5000);
+      const notice = await message.channel.send(`${deleted.size} mesaj silindi.`);
+      setTimeout(() => notice.delete().catch(() => {}), 4000);
       return;
     }
 
-    // Yasak kaldirma
-    if (command === "yasakkaldır" || command === "yasakkaldir") {
-      const userId = args[0];
-
-      if (!/^\d{17,20}$/.test(userId || "")) {
-        return message.reply("Kullanım: `!yasakkaldır KULLANICI_ID`");
-      }
-
-      if (!me.permissions.has(PermissionFlagsBits.BanMembers)) {
-        return message.reply("❌ Botta Üyeleri Yasakla yetkisi yok.");
-      }
-
-      await message.guild.members.unban(userId, "Moderasyon karari");
-      return message.reply(`✅ \`${userId}\` kullanıcısının yasağı kaldırıldı.`);
-    }
-
-    // Diger moderasyon komutlari icin hedef uye
-    if (!target) {
-      return message.reply("❌ Lütfen bir üyeyi etiketle.");
-    }
-
-    if (target.id === message.author.id) {
-      return message.reply("❌ Bu işlemi kendine uygulayamazsın.");
-    }
-
-    if (target.id === client.user.id) {
-      return message.reply("❌ Bu işlemi bota uygulayamazsın.");
-    }
-
-    if (target.id === message.guild.ownerId) {
-      return message.reply("❌ Sunucu sahibine bu işlem uygulanamaz.");
-    }
-
-    if (target.roles.highest.position >= member.roles.highest.position &&
-        message.guild.ownerId !== message.author.id) {
-      return message.reply("❌ Rolü sana eşit veya senden yüksek olan üyeye işlem uygulayamazsın.");
-    }
-
-    // Uye atma
-    if (command === "at") {
-      if (!me.permissions.has(PermissionFlagsBits.KickMembers)) {
-        return message.reply("❌ Botta Üyeleri At yetkisi yok.");
-      }
-
-      if (!target.kickable) {
-        return message.reply("❌ Bu üyeyi atamıyorum. Botun rolünü kontrol et.");
-      }
-
-      await target.kick(reason);
-      return message.reply(`👢 **${target.user.tag}** sunucudan atıldı.\nSebep: ${reason}`);
-    }
-
-    // Uye yasaklama
-    if (command === "yasakla") {
-      if (!me.permissions.has(PermissionFlagsBits.BanMembers)) {
-        return message.reply("❌ Botta Üyeleri Yasakla yetkisi yok.");
-      }
-
-      if (!target.bannable) {
-        return message.reply("❌ Bu üyeyi yasaklayamıyorum. Botun rolünü kontrol et.");
-      }
-
-      await target.ban({ reason });
-      return message.reply(`🔨 **${target.user.tag}** yasaklandı.\nSebep: ${reason}`);
-    }
-
-    // Sureli susturma
     if (command === "sustur") {
-      const duration = parseDuration(args[1]);
-
-      if (!duration) {
-        return message.reply("Kullanım: `!sustur @üye 10m [sebep]`\nEn fazla 28 gün.");
+      if (!message.member.permissions.has(PermissionFlagsBits.ModerateMembers)) {
+        return message.reply("Üyeleri susturma yetkin yok.");
       }
 
-      if (!me.permissions.has(PermissionFlagsBits.ModerateMembers)) {
-        return message.reply("❌ Botta Üyeleri Zaman Aşımına Uğrat yetkisi yok.");
+      const member = message.mentions.members.first();
+      const durationArg = args[1];
+
+      if (!member || !durationArg) {
+        return message.reply("Kullanım: `!sustur @uye 10m [sebep]`");
       }
 
-      if (!target.moderatable) {
-        return message.reply("❌ Bu üyeyi susturamıyorum. Botun rolünü kontrol et.");
+      const match = durationArg.match(/^(\d+)(s|m|h|d)$/i);
+      if (!match) {
+        return message.reply("Süre biçimi: `30s`, `10m`, `2h` veya `1d`");
       }
 
-      const timeoutReason = args.slice(2).join(" ") || "Sebep belirtilmedi.";
-      await target.timeout(duration, timeoutReason);
+      const amount = Number(match[1]);
+      const unit = match[2].toLowerCase();
+      const multipliers = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+      const duration = amount * multipliers[unit];
 
-      return message.reply(
-        `🔇 **${target.user.tag}** susturuldu.\nSüre: ${args[1]}\nSebep: ${timeoutReason}`
-      );
+      if (duration < 1000 || duration > 28 * 86400000) {
+        return message.reply("Süre 1 saniye ile 28 gün arasında olmalı.");
+      }
+
+      if (!member.moderatable) {
+        return message.reply("Bu üyeyi susturamıyorum.");
+      }
+
+      const reason = args.slice(2).join(" ") || "Sebep belirtilmedi";
+      await member.timeout(duration, reason);
+      return message.reply(`${member.user.tag} susturuldu. Süre: ${durationArg}. Sebep: ${reason}`);
     }
 
-    // Susturma kaldirma
-    if (command === "susturmakaldır" || command === "susturmakaldir") {
-      if (!me.permissions.has(PermissionFlagsBits.ModerateMembers)) {
-        return message.reply("❌ Botta Üyeleri Zaman Aşımına Uğrat yetkisi yok.");
+    if (["susturmakaldir", "susturmakaldır"].includes(command)) {
+      if (!message.member.permissions.has(PermissionFlagsBits.ModerateMembers)) {
+        return message.reply("Susturmayı kaldırma yetkin yok.");
       }
 
-      if (!target.moderatable) {
-        return message.reply("❌ Bu üyede susturma kaldırılamıyor. Botun rolünü kontrol et.");
-      }
+      const member = message.mentions.members.first();
+      if (!member) return message.reply("Kullanım: `!susturmakaldir @uye`");
+      if (!member.moderatable) return message.reply("Bu üyenin susturmasını kaldıramıyorum.");
 
-      await target.timeout(null, "Susturma moderatör tarafından kaldırıldı.");
-      return message.reply(`🔊 **${target.user.tag}** kullanıcısının susturması kaldırıldı.`);
+      await member.timeout(null);
+      return message.reply(`${member.user.tag} üzerindeki susturma kaldırıldı.`);
     }
   } catch (error) {
-    console.error("Komut hatasi:", error);
-
-    if (error.code === 50013) {
-      return message.reply(
-        "❌ Botun yetkisi yetersiz. Sunucu ayarlarından botun rolünü ve izinlerini kontrol et."
-      ).catch(() => {});
-    }
-
-    if (error.code === 10013) {
-      return message.reply("❌ Kullanıcı bulunamadı veya geçersiz kullanıcı ID'si.").catch(() => {});
-    }
-
-    return message.reply(
-      "❌ İşlem başarısız oldu. Botun rol sırasını ve yetkilerini kontrol et."
-    ).catch(() => {});
+    console.error("Komut hatası:", error);
+    return message.reply("Komut çalıştırılırken hata oluştu. Botun yetkilerini ve rol sırasını kontrol et.")
+      .catch(() => {});
   }
 });
 
-client.login(TOKEN).catch(error => {
+client.login(TOKEN).catch((error) => {
   console.error("Discord giris hatasi:", error);
 });
