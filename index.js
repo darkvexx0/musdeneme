@@ -9,7 +9,7 @@ const {
 const http = require("node:http");
 
 // BOT TOKENINI BURAYA YAZ
-const TOKEN = "MTU2MzQ4ODU5NTI3NTQxNTU4Mg.G6Q2QY.Da8geGBHH1Ix92AQeBo888Kt0bOnmKwruxngb8";
+const TOKEN = "MTU2MzQ4ODU5NTI3NTQxNTU4Mg.GQRQVP.9jCpY9c1QxLDuMQvPXHIMzZbFakA93qzo78I3E";
 
 const PREFIX = "!";
 
