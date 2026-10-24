@@ -35,7 +35,17 @@ client.once("ready", () => {
   client.user.setActivity("Hyper Uptime testinde");
 });
 
-client.login(TOKEN).catch(error => {
-  console.error("Discord giris hatasi:", error);
-  process.exit(1);
+console.log("Discord girisi baslatiliyor...");
+console.log("Token mevcut mu:", Boolean(TOKEN));
+
+client.on("error", error => {
+  console.error("Discord istemci hatasi:", error);
 });
+
+client.login(TOKEN)
+  .then(() => {
+    console.log("Discord giris istegi basarili!");
+  })
+  .catch(error => {
+    console.error("Discord giris hatasi:", error);
+  });
